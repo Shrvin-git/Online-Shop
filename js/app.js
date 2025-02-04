@@ -121,12 +121,11 @@ const openBasketBtn = document.querySelector(".open-basket");
 const closeBasketBtn = document.querySelector('.close-basket')
 const basketScreen = document.querySelector(".basket-screen");
 const basketWrapper = document.querySelector('.basket-main')
-const totalPrice = document.querySelector('.total-price')
+const totalPriceElem = document.querySelector('.total-price')
 const clearBasketBtn = document.querySelector('.clear-button')
-const countLabel = document.querySelector('.count')
-const productCount = document.querySelector('.product-count')
+let countLabel = document.querySelector('.count')
+let productCount = document.querySelector('.products-count')
 const count = document.querySelector('.products-count')
-
 
 
 function showProducts() {
@@ -146,7 +145,7 @@ function showProducts() {
             </p>
           </main>
           <footer class="product-footer">
-            <p class="price">${product.price} ت</p>
+            <p class="price">${product.price.toLocaleString()} ت</p>
             <button class="add-to-cart" onclick="addProductToBasket(${product.id})">
               <i class="bx bx-cart-alt"></i>
               افزودن به سبد
@@ -156,56 +155,47 @@ function showProducts() {
       `
     )
   })
+  changeCountProducst()
 }
 function addProductToBasket(productID) {
+  let product = products.find(function (p) {
+    return p.id === productID
+  })
 
-  let findProduct = products.find(function (items) {
-    return items.id == productID
-  })
-  let isInBasket = basket.some(function (product) {
-    return product.id === productID
-  })
-  if (isInBasket) {
-    basket.find(function (p) {
-      p.count++;
-      showBasketProducts(basket)
-    })
-  }
-  else {
-    basket.push(findProduct)
-    countLabel.innerHTML = basket.length
-    count.innerHTML = '(' + basket.length + ')'
-    showBasketProducts(basket)
-  }
+  basket.push(product)
+
+  saveBasketInLocalStorage()
+  calculateTotalPrice()
+  changeCountProducst()
 
 }
 function showBasketProducts() {
-
+  basketScreen.classList.remove('hidden')
   basketWrapper.innerHTML = ''
-  let sumPrice = 0
-  basket.forEach(function (product) {
-    basketWrapper.insertAdjacentHTML('beforeend',
-      `
+
+  if (basket.length) {
+    basket.forEach(function (product) {
+      basketWrapper.insertAdjacentHTML('beforeend',
+        `
       <article class="basket-item">
                 <div class="flex-center">
                   <img src="${product.img}" alt="">
                   <div class="basket-item_details">
                     <p class="basket-item_title">
-                     ${product.title}
-                      512SSD
+                       ${product.title}
                     </p>
-                    <p class="basket-item_price">${product.price}</p>
+                    <p class="basket-item_price">${product.price.toLocaleString()}</p>
                   </div>
                   <div>
                     <div class="buttons">
-                      <button class="increase" onClick="increasePrice(${product.id})">
+                      <button class="increase" onclick="increasePrice(${product.id})">
                         <i class="bx bx-plus"></i>
                       </button>
-                      <button onClick=" removeProductInBasket(${product.id})" class="remove-button">
+                      <button onclick=" removeProductInBasket(${product.id})" class="remove-button">
                         <!-- Boxicons trash icon -->
                         <i class="bx bx-trash"></i>
                       </button>
-                      <button class="decrease" onClick="decreasePrice(${product.id})">
+                      <button class="decrease" onclick="decreasePrice(${product.id})">
                         <!-- Decrease icon -->
                         <i class="bx bx-minus"> </i>
                       </button>
@@ -216,71 +206,268 @@ function showBasketProducts() {
                     </div>
                   </div>
                 </div>
-              </article>
+        </article>
+      `
+      )
+    })
+  }
+  else {
+    basketWrapper.insertAdjacentHTML('beforeend',
+      `
+       <p class="empty-basket">
+                سبد خرید شما خالی می باشد :(
+       </p>
       `
     )
+  }
 
-    sumPrice += product.count * product.price
-    totalPrice.innerHTML = sumPrice
-  });
+  calculateTotalPrice()
+  changeCountProducst()
+
+}
+function closeBasket() {
+  basketScreen.classList.add('hidden')
+}
+function saveBasketInLocalStorage() {
+  localStorage.setItem('basket', JSON.stringify(basket))
+}
+function getBasketInLocalStorage() {
+  let localBasket = JSON.parse(localStorage.getItem('basket'))
+  if (localBasket) {
+    basket = localBasket
+  }
+  console.log(basket);
+  showProducts()
+}
+function calculateTotalPrice() {
+  let totalPrice = 0
+
+  basket.forEach(function (product) {
+    totalPrice += product.price * product.count
+  })
+  totalPriceElem.innerHTML = totalPrice.toLocaleString()
+}
+function clearBasket() {
+  basket = []
+  console.log(basket);
+  saveBasketInLocalStorage()
+  showBasketProducts()
+  calculateTotalPrice()
+  changeCountProducst()
+}
+function changeCountProducst() {
+  countLabel.innerHTML = basket.length
+  productCount.innerHTML = `(${basket.length})`
 }
 function removeProductInBasket(productID) {
-
-  let isInBasket = basket.findIndex(function (product) {
-    return product.id == productID
+  let productIndex = basket.findIndex(function (p) {
+    return p.id == productID
   })
 
-  basket.splice(isInBasket, 1)
-  showBasketProducts(basket)
+
+  basket.splice(productIndex, 1)
+  saveBasketInLocalStorage()
+  showBasketProducts()
 }
 function increasePrice(productID) {
-
-  let changeCount = basket.find(function (items) {
-    return productID == items.id
+  let changeCount = basket.find(function (product) {
+    return product.id === productID
   })
 
   if (changeCount) {
     changeCount.count++
-    console.log(changeCount);
-
+    saveBasketInLocalStorage()
     showBasketProducts()
+    calculateTotalPrice()
   }
+
 }
 function decreasePrice(productID) {
-
-  let product = basket.find(function (p) {
-    return p.id === productID
+  let changeCount = basket.find(function (product) {
+    return product.id === productID
   })
 
-  if (product) {
-    product.count--
+  if (changeCount) {
+    changeCount.count--
+    if (changeCount.count < 1) {
+      changeCount.count = 1
 
-    if (product.count < 1) {
-      product.count = 1
-      console.log(product);
-      showBasketProducts()
-    }
-    else {
-      showBasketProducts()
-    }
 
+    } else {
+      saveBasketInLocalStorage()
+      showBasketProducts()
+      calculateTotalPrice()
+    }
   }
+
 
 }
 
+openBasketBtn.addEventListener('click', showBasketProducts)
+closeBasketBtn.addEventListener('click', closeBasket)
+clearBasketBtn.addEventListener('click', clearBasket)
 
 
-openBasketBtn.addEventListener('click', function () {
-  basketScreen.classList.remove('hidden')
-})
-closeBasketBtn.addEventListener('click', function () {
-  basketScreen.classList.add('hidden')
 
-})
-clearBasketBtn.addEventListener('click', function () {
-  basket = []
-  countLabel.innerHTML = '0'
-  count.innerHTML = '0'
-  totalPrice.innerHTML = '0'
-  showBasketProducts()
-})
+
+
+
+
+// function showProducts() {
+//   products.forEach(function (product) {
+//     productsContainer.insertAdjacentHTML('beforeend',
+//       `
+//       <article>
+//           <header class="product-header">
+//             <img src="${product.img}" class="product-img" alt="">
+//           </header>
+//           <main class="product-body">
+//             <h3 class="product-title">
+//            ${product.title}
+//             </h3>
+//             <p class="desc">
+//              ${product.description}
+//             </p>
+//           </main>
+//           <footer class="product-footer">
+//             <p class="price">${product.price} ت</p>
+//             <button class="add-to-cart" onclick="addProductToBasket(${product.id})">
+//               <i class="bx bx-cart-alt"></i>
+//               افزودن به سبد
+//             </button>
+//           </footer>
+//         </article>
+//       `
+//     )
+//   })
+// }
+// function addProductToBasket(productID) {
+
+//   let findProduct = products.find(function (items) {
+//     return items.id == productID
+//   })
+//   let isInBasket = basket.some(function (product) {
+//     return product.id === productID
+//   })
+//   if (isInBasket) {
+//     basket.find(function (p) {
+//       p.count++;
+//       showBasketProducts(basket)
+//     })
+//   }
+//   else {
+//     basket.push(findProduct)
+//     countLabel.innerHTML = basket.length
+//     count.innerHTML = '(' + basket.length + ')'
+//     showBasketProducts(basket)
+//   }
+
+// }
+// function showBasketProducts() {
+
+//   basketWrapper.innerHTML = ''
+//   let sumPrice = 0
+//   basket.forEach(function (product) {
+//     basketWrapper.insertAdjacentHTML('beforeend',
+//       `
+//       <article class="basket-item">
+//                 <div class="flex-center">
+//                   <img src="${product.img}" alt="">
+//                   <div class="basket-item_details">
+//                     <p class="basket-item_title">
+//                      ${product.title}
+//                       512SSD
+//                     </p>
+//                     <p class="basket-item_price">${product.price}</p>
+//                   </div>
+//                   <div>
+//                     <div class="buttons">
+//                       <button class="increase" onClick="increasePrice(${product.id})">
+//                         <i class="bx bx-plus"></i>
+//                       </button>
+//                       <button onClick=" removeProductInBasket(${product.id})" class="remove-button">
+//                         <!-- Boxicons trash icon -->
+//                         <i class="bx bx-trash"></i>
+//                       </button>
+//                       <button class="decrease" onClick="decreasePrice(${product.id})">
+//                         <!-- Decrease icon -->
+//                         <i class="bx bx-minus"> </i>
+//                       </button>
+//                     </div>
+//                     <div class="product-count-card">
+//                       <span>تعداد:</span>
+//                       <span class="product-count">${product.count}</span>
+//                     </div>
+//                   </div>
+//                 </div>
+//               </article>
+//       `
+//     )
+
+//     sumPrice += product.count * product.price
+//     totalPrice.innerHTML = sumPrice
+//   });
+// }
+// function removeProductInBasket(productID) {
+
+//   let isInBasket = basket.findIndex(function (product) {
+//     return product.id == productID
+//   })
+
+//   basket.splice(isInBasket, 1)
+//   showBasketProducts(basket)
+//   if (basket.length == 0) {
+//     totalPrice.innerHTML = '0'
+//   }
+// }
+// function increasePrice(productID) {
+
+//   let changeCount = basket.find(function (items) {
+//     return productID == items.id
+//   })
+
+//   if (changeCount) {
+//     changeCount.count++
+//     console.log(changeCount);
+
+//     showBasketProducts()
+//   }
+// }
+// function decreasePrice(productID) {
+
+//   let product = basket.find(function (p) {
+//     return p.id === productID
+//   })
+
+//   if (product) {
+//     product.count--
+
+//     if (product.count < 1) {
+//       product.count = 1
+//       console.log(product);
+//       showBasketProducts()
+//     }
+//     else {
+//       showBasketProducts()
+//     }
+
+//   }
+
+// }
+
+
+
+// openBasketBtn.addEventListener('click', function () {
+//   basketScreen.classList.remove('hidden')
+// })
+// closeBasketBtn.addEventListener('click', function () {
+//   basketScreen.classList.add('hidden')
+
+// })
+// clearBasketBtn.addEventListener('click', function () {
+//   basket = []
+//   countLabel.innerHTML = '0'
+//   count.innerHTML = '0'
+//   totalPrice.innerHTML = '0'
+//   showBasketProducts()
+// })
